@@ -30,8 +30,12 @@ impl Drop for KcpListener {
 }
 
 impl KcpListener {
-    pub async fn bind<A: ToSocketAddrs>(config: KcpConfig, addr: A) -> KcpResult<KcpListener> {
-        let udp = UdpSocket::bind(addr).await?;
+    pub async fn bind<A: ToSocketAddrs>(
+        config: KcpConfig,
+        addr: Option<A>,
+        udp: Option<UdpSocket>,
+    ) -> KcpResult<KcpListener> {
+        let udp = udp.unwrap_or(UdpSocket::bind(addr.expect("udp and addr cannot both be empty")).await?);
         let udp = Arc::new(udp);
         let server_udp = udp.clone();
 
@@ -149,7 +153,9 @@ mod test {
 
         let config = KcpConfig::default();
 
-        let mut listener = KcpListener::bind(config.clone(), "127.0.0.1:0").await.unwrap();
+        let mut listener = KcpListener::bind(config.clone(), Some("127.0.0.1:0"), None)
+            .await
+            .unwrap();
         let server_addr = listener.local_addr().unwrap();
 
         tokio::spawn(async move {
@@ -175,7 +181,7 @@ mod test {
 
         for _ in 0..100 {
             vfut.push(async move {
-                let mut stream = KcpStream::connect(&config, server_addr).await.unwrap();
+                let mut stream = KcpStream::connect(&config, server_addr, None).await.unwrap();
 
                 for _ in 0..20 {
                     const SEND_BUFFER: &[u8] = b"HELLO WORLD";

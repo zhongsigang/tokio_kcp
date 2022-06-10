@@ -30,11 +30,11 @@ impl Drop for KcpStream {
 }
 
 impl KcpStream {
-    pub async fn connect(config: &KcpConfig, addr: SocketAddr) -> KcpResult<KcpStream> {
-        let udp = match addr.ip() {
+    pub async fn connect(config: &KcpConfig, addr: SocketAddr, udp: Option<UdpSocket>) -> KcpResult<KcpStream> {
+        let udp = udp.unwrap_or(match addr.ip() {
             IpAddr::V4(..) => UdpSocket::bind("0.0.0.0:0").await?,
             IpAddr::V6(..) => UdpSocket::bind("[::]:0").await?,
-        };
+        });
 
         let udp = Arc::new(udp);
         let conv = rand::random();
